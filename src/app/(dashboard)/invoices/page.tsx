@@ -1,4 +1,10 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+
+export const metadata: Metadata = {
+  title: 'Invoices',
+  robots: { index: false, follow: false },
+}
 import { InvoicesClient } from './_components/invoices-client'
 import type { Invoice, Property } from '@/types'
 

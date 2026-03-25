@@ -15,6 +15,12 @@ function formatPhone(digits: string): string {
   return `+91${digits}`
 }
 
+export const metadata = {
+  title: 'Create Account',
+  description: 'Create your HomeStayPMS account and start managing your homestay in minutes.',
+  robots: { index: false, follow: false },
+}
+
 export default function SignupPage() {
   const router = useRouter()
   const supabase = createClient()

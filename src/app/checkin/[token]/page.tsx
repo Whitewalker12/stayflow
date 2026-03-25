@@ -1,4 +1,11 @@
+import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/service'
+
+export const metadata: Metadata = {
+  title: 'Guest Check-In',
+  description: 'Complete your check-in quickly and securely before you arrive.',
+  robots: { index: false, follow: false },
+}
 import { CheckinForm } from './_components/checkin-form'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import type { IdDocumentType } from '@/types'

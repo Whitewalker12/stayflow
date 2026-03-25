@@ -236,6 +236,12 @@ function LoginForm() {
   )
 }
 
+export const metadata = {
+  title: 'Sign In',
+  description: 'Sign in to your HomeStayPMS account to manage bookings, guests and invoices.',
+  robots: { index: false, follow: false },
+}
+
 export default function LoginPage() {
   return (
     <Suspense>

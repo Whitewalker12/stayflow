@@ -1,0 +1,44 @@
+{
+  "name": "HomeStayPMS",
+  "short_name": "HomeStayPMS",
+  "description": "Homestay property management software for Indian owners",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#1E3A8A",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity"],
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Booking",
+      "url": "/bookings?new=true",
+      "description": "Create a new booking"
+    },
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "description": "Today's overview"
+    }
+  ],
+  "screenshots": []
+}
