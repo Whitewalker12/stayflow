@@ -13,8 +13,10 @@ import {
   Check,
   LogOut,
   Menu,
+  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { HomeStayPMSLogo } from '@/components/shared/logo'
 import { createClient } from '@/lib/supabase/client'
 import { usePropertyStore } from '@/stores/property-store'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -34,6 +36,7 @@ const NAV_ITEMS = [
   { href: '/guests', label: 'Guests', icon: Users },
   { href: '/invoices', label: 'Invoices', icon: FileText },
   { href: '/properties', label: 'Properties', icon: Building2 },
+  { href: '/settings/notifications', label: 'Notifications', icon: Settings },
 ]
 
 function PropertySwitcher() {
@@ -177,10 +180,10 @@ function SidebarContent({
       {/* Logo */}
       <div className="px-4 py-5 border-b border-gray-100">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gray-900 flex items-center justify-center shrink-0">
-            <span className="text-white font-bold text-xs">S</span>
+          <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center shrink-0">
+            <HomeStayPMSLogo className="w-5 h-5 text-white" />
           </div>
-          <span className="font-semibold text-gray-900">StayFlow</span>
+          <span className="font-semibold text-gray-900">HomeStayPMS</span>
         </div>
       </div>
 

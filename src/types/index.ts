@@ -110,6 +110,34 @@ export type BookingGuest = {
   created_at: string
 }
 
+// ─── iCal Sync ───────────────────────────────────────────────────────────────
+
+export type ICalConnection = {
+  id: string
+  room_id: string
+  name: string          // e.g. "Airbnb", "Booking.com"
+  feed_url: string
+  last_synced_at: string | null
+  sync_error: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type ExternalBlock = {
+  id: string
+  room_id: string
+  ical_connection_id: string
+  external_uid: string
+  start_date: string    // YYYY-MM-DD
+  end_date: string      // YYYY-MM-DD
+  summary: string
+  created_at: string
+  updated_at: string
+}
+
+// ─── Invoices ────────────────────────────────────────────────────────────────
+
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'cancelled'
 
 /** Line item stored inside the `line_items` JSONB column */

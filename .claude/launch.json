@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "Next.js dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin exec npm run dev"],
+      "port": 3000,
+      "autoPort": false
     }
   ]
 }

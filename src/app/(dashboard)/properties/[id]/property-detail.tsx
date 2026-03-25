@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePropertyStore } from '@/stores/property-store'
@@ -48,10 +48,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ArrowLeft, Plus, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, MoreVertical, Pencil, Trash2, Link2, Copy, Check, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { TimeSelect } from '@/components/shared/time-select'
+import type { ICalConnection } from '@/types'
 
 // ─────────────────────────────────────────
 // Helpers
@@ -608,6 +609,293 @@ function RoomsTab({
 }
 
 // ─────────────────────────────────────────
+// iCal Sync tab
+// ─────────────────────────────────────────
+
+const OTA_SUGGESTIONS = ['Airbnb', 'Booking.com', 'MakeMyTrip', 'Goibibo', 'Agoda', 'Expedia']
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  function handleCopy() {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title={copied ? 'Copied!' : 'Copy to clipboard'}
+      className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500 transition-colors"
+    >
+      {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+    </button>
+  )
+}
+
+function AddConnectionDialog({
+  roomId,
+  onAdded,
+}: {
+  roomId: string
+  onAdded: (conn: ICalConnection) => void
+}) {
+  const supabase = createClient()
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [feedUrl, setFeedUrl] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function handleSave() {
+    setError(null)
+    if (!name.trim()) { setError('Name is required'); return }
+    if (!feedUrl.trim() || !feedUrl.startsWith('http')) { setError('Valid URL required (starts with http)'); return }
+
+    setLoading(true)
+    const { data, error: dbErr } = await supabase
+      .from('ical_connections')
+      .insert({ room_id: roomId, name: name.trim(), feed_url: feedUrl.trim() })
+      .select()
+      .single()
+    setLoading(false)
+
+    if (dbErr) { setError(dbErr.message); return }
+    onAdded(data as ICalConnection)
+    setOpen(false)
+    setName('')
+    setFeedUrl('')
+  }
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <Plus className="w-3.5 h-3.5" />
+        Add feed
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add iCal feed</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {error && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label>Source name *</Label>
+              <div className="flex gap-1.5 flex-wrap mb-2">
+                {OTA_SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setName(s)}
+                    className={cn(
+                      'text-xs px-2 py-1 rounded-full border transition-colors',
+                      name === s
+                        ? 'bg-gray-900 text-white border-gray-900'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
+                    )}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <Input
+                placeholder="e.g. Airbnb"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>iCal feed URL *</Label>
+              <Input
+                placeholder="https://www.airbnb.com/calendar/ical/..."
+                value={feedUrl}
+                onChange={(e) => setFeedUrl(e.target.value)}
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-gray-400">
+                In Airbnb: Listing → Availability → Export Calendar
+              </p>
+            </div>
+          </div>
+          <DialogFooter showCloseButton>
+            <Button onClick={handleSave} disabled={loading}>
+              {loading ? 'Adding…' : 'Add feed'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+function ICalRoomSection({
+  room,
+  appUrl,
+}: {
+  room: Room
+  appUrl: string
+}) {
+  const supabase = createClient()
+  const [connections, setConnections] = useState<ICalConnection[]>([])
+  const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
+
+  const icalToken = (room as Room & { ical_export_token?: string }).ical_export_token
+  const exportUrl = icalToken ? `${appUrl}/api/ical/${icalToken}` : null
+
+  useEffect(() => {
+    supabase
+      .from('ical_connections')
+      .select('*')
+      .eq('room_id', room.id)
+      .eq('is_active', true)
+      .order('created_at')
+      .then(({ data }) => {
+        setConnections((data ?? []) as ICalConnection[])
+        setLoading(false)
+      })
+  }, [room.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleDelete(connId: string) {
+    await supabase.from('ical_connections').update({ is_active: false }).eq('id', connId)
+    setConnections((prev) => prev.filter((c) => c.id !== connId))
+  }
+
+  async function handleSyncNow() {
+    setSyncing(true)
+    await fetch('/api/cron/sync-ical')
+    // Re-fetch connections to update last_synced_at
+    const { data } = await supabase
+      .from('ical_connections')
+      .select('*')
+      .eq('room_id', room.id)
+      .eq('is_active', true)
+      .order('created_at')
+    setConnections((data ?? []) as ICalConnection[])
+    setSyncing(false)
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-medium text-gray-900 text-sm">{room.name}</p>
+        <AddConnectionDialog
+          roomId={room.id}
+          onAdded={(conn) => setConnections((prev) => [...prev, conn])}
+        />
+      </div>
+
+      {/* Export URL */}
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Export URL (share with OTAs)</p>
+        {exportUrl ? (
+          <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+            <Link2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+            <span className="text-xs font-mono text-gray-600 truncate flex-1">{exportUrl}</span>
+            <CopyButton text={exportUrl} />
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 italic">Token not generated yet — run schema migration first.</p>
+        )}
+      </div>
+
+      {/* Import feeds */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Import feeds</p>
+          {connections.length > 0 && (
+            <button
+              type="button"
+              onClick={handleSyncNow}
+              disabled={syncing}
+              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+            >
+              <RefreshCw className={cn('w-3 h-3', syncing && 'animate-spin')} />
+              {syncing ? 'Syncing…' : 'Sync now'}
+            </button>
+          )}
+        </div>
+
+        {loading ? (
+          <p className="text-xs text-gray-400">Loading…</p>
+        ) : connections.length === 0 ? (
+          <p className="text-xs text-gray-400 italic">No feeds added. Add an Airbnb or Booking.com feed above.</p>
+        ) : (
+          <div className="space-y-2">
+            {connections.map((conn) => (
+              <div
+                key={conn.id}
+                className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
+              >
+                {conn.sync_error ? (
+                  <WifiOff className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                ) : (
+                  <Wifi className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800">{conn.name}</p>
+                  {conn.sync_error ? (
+                    <p className="text-xs text-red-500 truncate">{conn.sync_error}</p>
+                  ) : conn.last_synced_at ? (
+                    <p className="text-xs text-gray-400">
+                      Last synced {new Date(conn.last_synced_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' })}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400">Not synced yet</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(conn.id)}
+                  className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-red-500 transition-colors"
+                  title="Remove feed"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ICalTab({
+  rooms,
+}: {
+  rooms: Room[]
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+        <p className="font-medium mb-1">Two-way calendar sync</p>
+        <p className="text-xs text-blue-600">
+          <strong>Export:</strong> Share your room&apos;s URL with Airbnb/Booking.com so they block dates automatically.
+          <br />
+          <strong>Import:</strong> Add OTA calendar URLs so blocked dates appear in grey on your calendar.
+        </p>
+      </div>
+
+      {rooms.length === 0 ? (
+        <p className="text-sm text-gray-500">Add rooms first to set up iCal sync.</p>
+      ) : (
+        rooms.map((room) => (
+          <ICalRoomSection key={room.id} room={room} appUrl={appUrl} />
+        ))
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────
 // Details tab (edit property)
 // ─────────────────────────────────────────
 
@@ -922,7 +1210,7 @@ export function PropertyDetail({
 }: {
   property: Property
   initialRooms: Room[]
-  initialTab: 'details' | 'rooms'
+  initialTab: 'details' | 'rooms' | 'ical'
 }) {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -958,6 +1246,7 @@ export function PropertyDetail({
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="ical">iCal Sync</TabsTrigger>
         </TabsList>
 
         <TabsContent value="details" className="mt-6">
@@ -966,6 +1255,10 @@ export function PropertyDetail({
 
         <TabsContent value="rooms" className="mt-6">
           <RoomsTab propertyId={property.id} initialRooms={initialRooms} />
+        </TabsContent>
+
+        <TabsContent value="ical" className="mt-6">
+          <ICalTab rooms={initialRooms} />
         </TabsContent>
       </Tabs>
     </div>

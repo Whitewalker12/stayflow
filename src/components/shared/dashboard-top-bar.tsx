@@ -32,7 +32,7 @@ function getPageMeta(pathname: string) {
   const match = Object.keys(PAGE_META)
     .sort((a, b) => b.length - a.length)
     .find((key) => pathname.startsWith(key))
-  return match ? PAGE_META[match] : { title: 'StayFlow' }
+  return match ? PAGE_META[match] : { title: 'HomeStayPMS' }
 }
 
 export function DashboardTopBar({ user }: { user: User }) {

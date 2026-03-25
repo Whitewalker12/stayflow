@@ -124,6 +124,18 @@ export function BookingDetailSheet({
         checked_out: 'Guest checked out',
       }
       toast.success(labels[nextStatus] ?? 'Status updated')
+
+      // Notify owner via WhatsApp (fire-and-forget)
+      fetch('/api/bookings/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: booking.id,
+          event: 'status_changed',
+          new_status: nextStatus,
+        }),
+      }).catch(() => {})
+
       onUpdated()
       if (nextStatus !== 'checked_out') onOpenChange(false)
     } else {

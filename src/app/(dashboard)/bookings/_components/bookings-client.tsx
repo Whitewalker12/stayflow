@@ -17,7 +17,7 @@ import { BookingCalendar, type BookingWithGuest } from './booking-calendar'
 import { NewBookingSheet } from './new-booking-sheet'
 import { BookingDetailSheet } from './booking-detail-sheet'
 import { QuickBookingModal } from './quick-booking-modal'
-import type { Property, Room } from '@/types'
+import type { Property, Room, ExternalBlock } from '@/types'
 
 const NUM_DAYS = 14
 
@@ -59,6 +59,28 @@ export function BookingsClient() {
   }, [activePropertyId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchRooms() }, [fetchRooms])
+
+  // ── External blocks (iCal imports) ───────────────────────────────────────
+  const [externalBlocks, setExternalBlocks] = useState<ExternalBlock[]>([])
+
+  const fetchExternalBlocks = useCallback(async () => {
+    if (!activePropertyId || rooms.length === 0) { setExternalBlocks([]); return }
+
+    const roomIds = rooms.map((r) => r.id)
+    const rangeStart = startDate.toISOString().split('T')[0]
+    const rangeEnd = addDays(startDate, NUM_DAYS).toISOString().split('T')[0]
+
+    const { data } = await supabase
+      .from('external_blocks')
+      .select('id, room_id, ical_connection_id, external_uid, start_date, end_date, summary, created_at, updated_at')
+      .in('room_id', roomIds)
+      .lt('start_date', rangeEnd)
+      .gt('end_date', rangeStart)
+
+    setExternalBlocks((data ?? []) as ExternalBlock[])
+  }, [activePropertyId, rooms, startDate]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { fetchExternalBlocks() }, [fetchExternalBlocks])
 
   // ── Bookings for visible range ────────────────────────────────────────────
   const [bookings, setBookings] = useState<BookingWithGuest[]>([])
@@ -157,6 +179,7 @@ export function BookingsClient() {
   function handleCreated() {
     fetchBookings()
     fetchRooms()
+    fetchExternalBlocks()
   }
 
   function handleUpdated() {
@@ -231,6 +254,7 @@ export function BookingsClient() {
             <BookingCalendar
               rooms={rooms}
               bookings={bookings}
+              externalBlocks={externalBlocks}
               startDate={startDate}
               numDays={NUM_DAYS}
               onNavigate={navigate}

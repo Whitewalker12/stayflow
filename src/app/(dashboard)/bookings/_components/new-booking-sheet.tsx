@@ -290,6 +290,13 @@ export function NewBookingSheet({
       console.error('booking_guests insert error:', bgError.message)
     }
 
+    // ── Notify owner via WhatsApp (fire-and-forget) ───────────────────────
+    fetch('/api/bookings/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ booking_id: booking.id, event: 'created' }),
+    }).catch(() => {})  // never block the UI on notification failure
+
     setSubmitting(false)
     toast.success('Booking created successfully')
     onCreated()

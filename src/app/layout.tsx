@@ -9,7 +9,7 @@ const geist = Geist({
 })
 
 export const metadata: Metadata = {
-  title: 'StayFlow',
+  title: 'HomeStayPMS',
   description: 'Homestay property management, simplified',
 }
 

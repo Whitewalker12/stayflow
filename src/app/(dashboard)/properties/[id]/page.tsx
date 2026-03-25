@@ -34,7 +34,7 @@ export default async function PropertyPage({
     <PropertyDetail
       property={property}
       initialRooms={rooms ?? []}
-      initialTab={tab === 'rooms' ? 'rooms' : 'details'}
+      initialTab={tab === 'rooms' ? 'rooms' : tab === 'ical' ? 'ical' : 'details'}
     />
   )
 }

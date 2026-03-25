@@ -279,7 +279,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
     <Document
       title={invoice.invoice_number}
       author={invoice.property_name}
-      creator="StayFlow PMS"
+      creator="HomeStayPMS"
     >
       <Page size="A4" style={styles.page}>
 

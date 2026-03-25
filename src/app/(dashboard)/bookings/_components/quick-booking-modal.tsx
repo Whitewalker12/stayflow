@@ -278,6 +278,13 @@ export function QuickBookingModal({
       is_primary: true,
     })
 
+    // ── Notify owner via WhatsApp (fire-and-forget) ───────────────────────
+    fetch('/api/bookings/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ booking_id: booking.id, event: 'created' }),
+    }).catch(() => {})  // never block the UI on notification failure
+
     setSubmitting(false)
     toast.success('Booking created')
     onCreated()
