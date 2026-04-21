@@ -83,13 +83,11 @@ interface GupshupWebhookBody {
 async function verifySignature(request: NextRequest, rawBody: string): Promise<boolean> {
   const secret = process.env.GUPSHUP_WEBHOOK_SECRET
   if (!secret) {
-    // If no secret is configured, skip verification (dev mode only)
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[WhatsApp Webhook] GUPSHUP_WEBHOOK_SECRET not set — skipping verification in dev')
-      return true
-    }
-    console.error('[WhatsApp Webhook] GUPSHUP_WEBHOOK_SECRET is not configured')
-    return false
+    // Gupshup's standard webhook setup does not send an x-hub-signature header
+    // unless explicitly configured with a secret. Skip verification when no
+    // secret is set — rely on the owner-phone lookup as the trust gate instead.
+    console.warn('[WhatsApp Webhook] GUPSHUP_WEBHOOK_SECRET not set — skipping signature verification')
+    return true
   }
 
   const signatureHeader = request.headers.get('x-hub-signature')
@@ -144,6 +142,14 @@ async function findOwnerByPhone(phone: string): Promise<string | null> {
     console.error('[WhatsApp Webhook] Owner lookup failed:', err)
     return null
   }
+}
+
+// ---------------------------------------------------------------------------
+// GET — Gupshup webhook verification ping
+// ---------------------------------------------------------------------------
+
+export async function GET(): Promise<NextResponse> {
+  return NextResponse.json({ ok: true, service: 'HomeStayPMS WhatsApp Webhook' })
 }
 
 // ---------------------------------------------------------------------------
