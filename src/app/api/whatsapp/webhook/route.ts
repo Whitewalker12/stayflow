@@ -33,6 +33,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { logInboundMessage, sendTextMessage } from '@/lib/whatsapp/client'
 import { createServiceClient } from '@/lib/supabase/service'
+import { handleCommand } from '@/lib/whatsapp/commands'
 
 // ---------------------------------------------------------------------------
 // Types for the Gupshup webhook payload
@@ -209,25 +210,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     ownerId: ownerId ?? undefined,
   })
 
-  // ── Command dispatch (Prompt 5 will expand this) ──────────────────────────
-  //
-  // For now: acknowledge with a simple text reply so the owner knows
-  // the integration is working. When Prompt 5 adds command handling,
-  // replace this block with the command router.
-  //
+  // ── Command dispatch ───────────────────────────────────────────────────────
   if (isTextMessage && ownerId) {
     try {
-      await sendTextMessage({
-        to: senderPhone,
-        text: `✅ Message received! WhatsApp commands are coming soon.\n\nReply *HELP* once commands are ready.`,
-        ownerId,
-      })
+      const reply = await handleCommand(textContent, ownerId)
+      await sendTextMessage({ to: senderPhone, text: reply, ownerId })
     } catch (err) {
-      // Reply failure should not cause a non-200 response
-      console.error('[WhatsApp Webhook] Failed to send acknowledgement reply:', err)
+      console.error('[WhatsApp Webhook] Command handling failed:', err)
     }
   } else if (isTextMessage && !ownerId) {
-    // Unknown sender — do not reply (avoid spam replies to random numbers)
+    // Unknown sender — do not reply (avoid spam to random numbers)
     console.info(`[WhatsApp Webhook] Message from unregistered number: ${senderPhone}`)
   }
 
