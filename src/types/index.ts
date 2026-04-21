@@ -110,6 +110,43 @@ export type BookingGuest = {
   created_at: string
 }
 
+// ─── Expenses ────────────────────────────────────────────────────────────────
+
+export type ExpenseCategory =
+  | 'cleaning'
+  | 'maintenance'
+  | 'utilities'
+  | 'supplies'
+  | 'staff'
+  | 'ota_commission'
+  | 'other'
+
+export type Expense = {
+  id: string
+  property_id: string
+  category: ExpenseCategory
+  description: string | null
+  amount_paise: number
+  expense_date: string   // YYYY-MM-DD
+  receipt_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  cleaning:       'Cleaning',
+  maintenance:    'Maintenance',
+  utilities:      'Utilities',
+  supplies:       'Supplies',
+  staff:          'Staff',
+  ota_commission: 'OTA Commission',
+  other:          'Other',
+}
+
+export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  'cleaning', 'maintenance', 'utilities', 'supplies', 'staff', 'ota_commission', 'other',
+]
+
 // ─── iCal Sync ───────────────────────────────────────────────────────────────
 
 export type ICalConnection = {

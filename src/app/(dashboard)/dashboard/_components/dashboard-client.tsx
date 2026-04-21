@@ -28,6 +28,7 @@ import {
   Plus,
   Building2,
   Clock,
+  TrendingDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -120,6 +121,7 @@ type DashData = {
   monthBookings: MonthBooking[]
   recent: RecentBooking[]
   rooms: RoomSummary[]
+  monthExpensesPaise: number
 }
 
 // ── Source chart colours ───────────────────────────────────────────────────────
@@ -204,8 +206,8 @@ export function DashboardClient() {
     const today = getTodayIST()
     const { start: monthStart, end: monthEnd } = getMonthRange()
 
-    // All three queries in parallel
-    const [roomsRes, todayRes, monthRes, recentRes] = await Promise.all([
+    // All queries in parallel
+    const [roomsRes, todayRes, monthRes, expensesRes, recentRes] = await Promise.all([
       // Rooms for the active property
       supabase
         .from('rooms')
@@ -234,6 +236,14 @@ export function DashboardClient() {
         .eq('status', 'checked_out')
         .gte('check_out_date', monthStart)
         .lte('check_out_date', monthEnd),
+
+      // This month's expenses total
+      supabase
+        .from('expenses')
+        .select('amount_paise')
+        .eq('property_id', propertyId)
+        .gte('expense_date', monthStart)
+        .lte('expense_date', monthEnd),
 
       // Recent activity: last 10 bookings by updated_at
       supabase
@@ -292,11 +302,16 @@ export function DashboardClient() {
       }
     })
 
+    const monthExpensesPaise = (expensesRes.data ?? []).reduce(
+      (s: number, e: { amount_paise: number }) => s + (e.amount_paise ?? 0), 0
+    )
+
     setData({
       today: todayBookings,
       monthBookings,
       recent: recentBookings,
       rooms: (roomsRes.data ?? []) as RoomSummary[],
+      monthExpensesPaise,
     })
     setLoading(false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -331,6 +346,8 @@ export function DashboardClient() {
   const availableRooms = data?.rooms.filter((r) => r.status === 'available').length ?? 0
 
   const revenue = data?.monthBookings.reduce((s, b) => s + b.total_amount_paise, 0) ?? 0
+  const expenses = data?.monthExpensesPaise ?? 0
+  const netPaise = revenue - expenses
   const occupiedNights = data?.monthBookings.reduce((s, b) => s + b.num_nights, 0) ?? 0
   const now = new Date()
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
@@ -482,7 +499,7 @@ export function DashboardClient() {
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
           {monthLabel} Metrics
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatCard
             icon={TrendingUp}
             label="Occupancy"
@@ -498,6 +515,22 @@ export function DashboardClient() {
             sub={`${data?.monthBookings.length ?? 0} check-outs`}
             loading={loading}
             accent="bg-green-50"
+          />
+          <StatCard
+            icon={TrendingDown}
+            label="Expenses"
+            value={loading ? '' : formatCurrency(expenses)}
+            sub={expenses > 0 ? 'This month' : 'None logged'}
+            loading={loading}
+            accent="bg-red-50"
+          />
+          <StatCard
+            icon={IndianRupee}
+            label="Net Profit"
+            value={loading ? '' : formatCurrency(Math.abs(netPaise))}
+            sub={loading ? '' : netPaise >= 0 ? '✅ Profit' : '⚠️ Loss'}
+            loading={loading}
+            accent={netPaise >= 0 ? 'bg-emerald-50' : 'bg-orange-50'}
           />
           <StatCard
             icon={BarChart2}
