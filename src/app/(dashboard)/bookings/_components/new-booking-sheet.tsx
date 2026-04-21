@@ -39,8 +39,24 @@ interface NewBookingSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   properties: Property[]
-  /** Pre-fill from calendar cell click */
-  prefill?: { roomId?: string; date?: Date; propertyId?: string } | null
+  /**
+   * Pre-fill from calendar cell click OR from OTA deep link.
+   * OTA fields: guestName, checkInDate, checkOutDate, source, amountRupees, otaRef
+   */
+  prefill?: {
+    roomId?: string
+    date?: Date
+    propertyId?: string
+    /** Detected guest name from OTA message — shown as a hint banner */
+    guestName?: string
+    checkInDate?: string
+    checkOutDate?: string
+    source?: string
+    /** Total OTA amount in rupees — pre-fills amount_paid */
+    amountRupees?: number
+    /** OTA confirmation/reference code — pre-fills ota_booking_id */
+    otaRef?: string
+  } | null
   onCreated: () => void
 }
 
@@ -107,12 +123,22 @@ export function NewBookingSheet({
   // ── Apply prefill when sheet opens ──────────────────────────────────────
   useEffect(() => {
     if (!open) return
-    const checkIn = prefill?.date
+
+    // Determine check-in: OTA date string > calendar cell date > today
+    const checkIn = prefill?.checkInDate
+      ? prefill.checkInDate
+      : prefill?.date
       ? prefill.date.toISOString().split('T')[0]
       : todayStr()
-    const checkOutDate = new Date(checkIn)
-    checkOutDate.setDate(checkOutDate.getDate() + 1)
-    const checkOut = checkOutDate.toISOString().split('T')[0]
+
+    // Check-out: OTA date string > day after check-in
+    const checkOut = prefill?.checkOutDate
+      ? prefill.checkOutDate
+      : (() => {
+          const d = new Date(checkIn)
+          d.setDate(d.getDate() + 1)
+          return d.toISOString().split('T')[0]
+        })()
 
     setForm((prev) => ({
       ...prev,
@@ -120,6 +146,12 @@ export function NewBookingSheet({
       room_id: prefill?.roomId ?? '',
       check_in_date: checkIn,
       check_out_date: checkOut,
+      source: prefill?.source ?? prev.source,
+      amount_paid: prefill?.amountRupees != null ? String(prefill.amountRupees) : prev.amount_paid,
+      ota_booking_id: prefill?.otaRef ?? prev.ota_booking_id,
+      payment_method: prefill?.source && prefill.source !== 'direct' && prefill.source !== 'walk_in'
+        ? 'ota_collected'
+        : prev.payment_method,
     }))
     setSelectedGuest(null)
     setErrors({})
@@ -323,6 +355,17 @@ export function NewBookingSheet({
         {/* ── Scrollable body ─────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto">
           <form id="new-booking-form" onSubmit={handleSubmit}>
+
+            {/* OTA guest-name hint */}
+            {prefill?.guestName && (
+              <div className="mx-6 mt-4 flex items-start gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                <span className="text-base leading-none mt-0.5">📋</span>
+                <span>
+                  <span className="font-medium">OTA booking detected.</span>{' '}
+                  Guest name: <span className="font-semibold">{prefill.guestName}</span> — please search or create below.
+                </span>
+              </div>
+            )}
 
             {/* Server error */}
             {errors.server && (

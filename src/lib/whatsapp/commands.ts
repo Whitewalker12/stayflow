@@ -12,6 +12,7 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import { todayIST } from './cron-helpers'
 import { formatRupees } from './templates'
+import { parseOTAConfirmation, formatBookingReply } from './booking-parser'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -349,8 +350,15 @@ export async function handleCommand(
       case 'PHONE':
         return await handlePhoneLookup(parsed.phone!)
       case 'HELP':
-      default:
+      default: {
+        // Before showing help, check if this looks like an OTA booking confirmation
+        const otaParsed = parseOTAConfirmation(text)
+        if (otaParsed) {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://homestaypms.com'
+          return formatBookingReply(otaParsed, appUrl)
+        }
         return handleHelp()
+      }
     }
   } catch (err) {
     console.error('[WhatsApp Commands] Error handling command:', parsed.cmd, err)

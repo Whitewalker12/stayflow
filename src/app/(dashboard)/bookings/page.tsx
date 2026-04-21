@@ -6,6 +6,17 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function BookingsPage() {
-  return <BookingsClient />
+interface BookingsPageProps {
+  searchParams: {
+    guest_name?: string
+    check_in?: string
+    check_out?: string
+    source?: string
+    amount?: string
+    ref?: string
+  }
+}
+
+export default function BookingsPage({ searchParams }: BookingsPageProps) {
+  return <BookingsClient otaPrefill={searchParams} />
 }

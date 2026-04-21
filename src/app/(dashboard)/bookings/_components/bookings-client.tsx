@@ -21,7 +21,16 @@ import type { Property, Room, ExternalBlock } from '@/types'
 
 const NUM_DAYS = 14
 
-export function BookingsClient() {
+interface OTAPrefill {
+  guest_name?: string
+  check_in?: string
+  check_out?: string
+  source?: string
+  amount?: string
+  ref?: string
+}
+
+export function BookingsClient({ otaPrefill }: { otaPrefill?: OTAPrefill }) {
   const supabase = createClient()
 
   // ── Property store ───────────────────────────────────────────────────────
@@ -158,12 +167,37 @@ export function BookingsClient() {
     roomId?: string
     date?: Date
     propertyId?: string
+    guestName?: string
+    checkInDate?: string
+    checkOutDate?: string
+    source?: string
+    amountRupees?: number
+    otaRef?: string
   } | null>(null)
 
   const [detailSheetOpen, setDetailSheetOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<BookingWithGuest | null>(null)
 
   const [quickOpen, setQuickOpen] = useState(false)
+
+  // ── Auto-open sheet from OTA deep link ───────────────────────────────────
+  useEffect(() => {
+    if (!otaPrefill) return
+    const hasOTAData = otaPrefill.check_in || otaPrefill.guest_name || otaPrefill.ref
+    if (!hasOTAData) return
+
+    const amountNum = otaPrefill.amount ? parseFloat(otaPrefill.amount) : undefined
+
+    setNewBookingPrefill({
+      guestName: otaPrefill.guest_name,
+      checkInDate: otaPrefill.check_in,
+      checkOutDate: otaPrefill.check_out,
+      source: otaPrefill.source,
+      amountRupees: amountNum && !isNaN(amountNum) ? amountNum : undefined,
+      otaRef: otaPrefill.ref,
+    })
+    setNewSheetOpen(true)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   function handleCellClick(roomId: string, date: Date) {
