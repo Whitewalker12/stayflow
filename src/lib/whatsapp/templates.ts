@@ -15,11 +15,11 @@
  * │ Template ID             │ Purpose                                      │
  * ├─────────────────────────┼──────────────────────────────────────────────┤
  * │ booking_confirmation    │ Sent to owner when a new booking is created  │
- * │ daily_arrivals          │ 8 AM digest of today's check-ins             │
- * │ daily_departures        │ 9 AM digest of today's check-outs            │
+ * │ arrivals_summary        │ 8 AM digest of today's check-ins             │
+ * │ departures_summary      │ 9 AM digest of today's check-outs            │
  * │ payment_reminder        │ Pending payment alert to owner               │
- * │ guest_checkin_link      │ Self-check-in link sent to guest             │
- * │ checkout_thankyou       │ Thank-you + invoice link sent to guest       │
+ * │ checkin_text_welcome    │ Self-check-in link sent to guest             │
+ * │ checkout_thankyou_bye   │ Thank-you + invoice link sent to guest       │
  * └─────────────────────────┴──────────────────────────────────────────────┘
  */
 
@@ -29,11 +29,11 @@
 
 export const TEMPLATE_IDS = {
   bookingConfirmation: 'booking_confirmation',
-  dailyArrivals:       'daily_arrivals',
-  dailyDepartures:     'daily_departures',
+  dailyArrivals:       'arrivals_summary',
+  dailyDepartures:     'departures_summary',
   paymentReminder:     'payment_reminder',
-  guestCheckinLink:    'guest_checkin_link',
-  checkoutThankYou:    'checkout_thankyou',
+  guestCheckinLink:    'checkin_text_welcome',
+  checkoutThankYou:    'checkout_thankyou_bye',
 } as const
 
 export type TemplateId = (typeof TEMPLATE_IDS)[keyof typeof TEMPLATE_IDS]
@@ -68,7 +68,7 @@ export function buildBookingConfirmationParams(p: BookingConfirmationParams): st
 }
 
 // ---------------------------------------------------------------------------
-// Template: daily_arrivals
+// Template: arrivals_summary
 //
 // Body:
 //   ☀️ Good morning! Today's arrivals ({{1}}):
@@ -89,7 +89,7 @@ export function buildDailyArrivalsParams(p: DailyArrivalsParams): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Template: daily_departures
+// Template: departures_summary
 //
 // Body:
 //   📤 Today's departures ({{1}}):
@@ -137,7 +137,7 @@ export function buildPaymentReminderParams(p: PaymentReminderParams): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Template: guest_checkin_link
+// Template: checkin_text_welcome
 //
 // Body:
 //   🙏 Welcome to {{1}}!
@@ -160,7 +160,7 @@ export function buildGuestCheckinLinkParams(p: GuestCheckinLinkParams): string[]
 }
 
 // ---------------------------------------------------------------------------
-// Template: checkout_thankyou
+// Template: checkout_thankyou_bye
 //
 // Body:
 //   🙏 Thank you for staying at {{1}}!

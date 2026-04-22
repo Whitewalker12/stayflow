@@ -97,7 +97,7 @@ export function ExpensesClient() {
     setLoading(false)
   }, [activePropertyId, month, categoryFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { fetchExpenses() }, [fetchExpenses])
+  useEffect(() => { fetchExpenses() }, [fetchExpenses]) // eslint-disable-line react-hooks/set-state-in-effect
 
   // ── Totals ────────────────────────────────────────────────────────────────
 

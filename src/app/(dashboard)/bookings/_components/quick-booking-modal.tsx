@@ -101,7 +101,7 @@ export function QuickBookingModal({
     if (!form.room_id) return
     const room = rooms.find((r) => r.id === form.room_id)
     if (room) {
-      setForm((prev) => ({
+      setForm((prev) => ({ // eslint-disable-line react-hooks/set-state-in-effect
         ...prev,
         rate_per_night: String(paiseToRupees(room.base_rate_paise)),
       }))
@@ -111,7 +111,7 @@ export function QuickBookingModal({
   // Reset on open
   useEffect(() => {
     if (open) {
-      setForm({
+      setForm({ // eslint-disable-line react-hooks/set-state-in-effect
         room_id: '',
         check_in_date: todayStr(),
         check_out_date: tomorrowStr(),
@@ -160,6 +160,29 @@ export function QuickBookingModal({
     }
 
     setSubmitting(true)
+
+    // ── Availability check (before any DB writes) ─────────────────────────
+    const availRes = await fetch(
+      `/api/bookings/check-availability?room_id=${form.room_id}&check_in_date=${form.check_in_date}&check_out_date=${form.check_out_date}`
+    )
+    const avail = await availRes.json() as {
+      available: boolean
+      conflicting_bookings?: { check_in_date: string; check_out_date: string }[]
+      conflicting_blocks?: { start_date: string; end_date: string; source: string }[]
+    }
+
+    if (!avail.available) {
+      const booking = avail.conflicting_bookings?.[0]
+      const block   = avail.conflicting_blocks?.[0]
+      const msg = booking
+        ? `Already booked ${booking.check_in_date} – ${booking.check_out_date}`
+        : block
+        ? `Blocked by ${block.source} (${block.start_date} – ${block.end_date})`
+        : 'These dates are not available for this room'
+      setErrors({ check_out_date: msg })
+      setSubmitting(false)
+      return
+    }
 
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) {

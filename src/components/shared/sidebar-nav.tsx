@@ -15,6 +15,7 @@ import {
   Menu,
   Settings,
   Receipt,
+  FileBarChart2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { HomeStayPMSLogo } from '@/components/shared/logo'
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { href: '/guests', label: 'Guests', icon: Users },
   { href: '/invoices', label: 'Invoices', icon: FileText },
   { href: '/expenses', label: 'Expenses', icon: Receipt },
+  { href: '/reports', label: 'Reports', icon: FileBarChart2 },
   { href: '/properties', label: 'Properties', icon: Building2 },
   { href: '/settings/notifications', label: 'Notifications', icon: Settings },
 ]

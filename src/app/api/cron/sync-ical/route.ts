@@ -17,6 +17,9 @@ import { type NextRequest } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { parseICal } from '@/lib/ical/parser'
 import { verifyCronOrSession } from '@/lib/whatsapp/cron-helpers'
+import { sendTextMessage } from '@/lib/whatsapp/client'
+import { normalisePhone } from '@/lib/whatsapp/send'
+import { formatDateStr } from '@/lib/whatsapp/templates'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,6 +85,50 @@ export async function GET(request: NextRequest) {
           .upsert(blocks, { onConflict: 'ical_connection_id,external_uid' })
 
         if (upsertErr) throw new Error(`Upsert failed: ${upsertErr.message}`)
+      }
+
+      // Check for conflicts between imported events and existing StayFlow bookings
+      if (events.length > 0) {
+        // Get the room's property + owner info for WhatsApp alerting
+        const { data: roomInfo } = await supabase
+          .from('rooms')
+          .select('name, property_id, properties(name, owner_id, owner_phone)')
+          .eq('id', conn.room_id)
+          .single()
+
+        if (roomInfo?.properties) {
+          const prop = roomInfo.properties as unknown as { name: string; owner_id: string; owner_phone: string | null }
+          for (const evt of events) {
+            // Find overlapping StayFlow bookings
+            const { data: overlapping } = await supabase
+              .from('bookings')
+              .select('id, check_in_date, check_out_date, booking_guests(guests(full_name))')
+              .eq('room_id', conn.room_id)
+              .is('deleted_at', null)
+              .not('status', 'in', '("cancelled","no_show")')
+              .lt('check_in_date', evt.endDate)
+              .gt('check_out_date', evt.startDate)
+
+            if (overlapping && overlapping.length > 0 && prop.owner_phone) {
+              for (const booking of overlapping) {
+                const bg = booking.booking_guests as unknown as { guests: { full_name: string } }[] | null
+                const guestName = bg?.[0]?.guests?.full_name ?? 'Guest'
+                const msg =
+                  `⚠️ Conflict detected!\n\n` +
+                  `${conn.name} booking ${formatDateStr(evt.startDate)}–${formatDateStr(evt.endDate)} ` +
+                  `overlaps with ${guestName}'s booking in ${roomInfo.name}.\n\n` +
+                  `Property: ${prop.name}\n` +
+                  `Please resolve in your dashboard.`
+
+                sendTextMessage({
+                  to: normalisePhone(prop.owner_phone),
+                  text: msg,
+                  ownerId: prop.owner_id,
+                }).catch((err) => console.error('[iCal Sync] Conflict alert failed:', err))
+              }
+            }
+          }
+        }
       }
 
       // Delete stale blocks whose UIDs are no longer in the feed

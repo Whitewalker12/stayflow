@@ -75,8 +75,30 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Also check external_blocks (OTA iCal imports) for overlapping date ranges
+  const { data: conflictingBlocks, error: blockErr } = await supabase
+    .from('external_blocks')
+    .select('id, start_date, end_date, summary, ical_connections(name)')
+    .eq('room_id', room_id)
+    .lt('start_date', check_out_date)
+    .gt('end_date', check_in_date)
+
+  if (blockErr) {
+    return NextResponse.json({ error: blockErr.message }, { status: 500 })
+  }
+
+  const hasBookingConflict = (conflicting ?? []).length > 0
+  const hasBlockConflict = (conflictingBlocks ?? []).length > 0
+
   return NextResponse.json({
-    available: (conflicting ?? []).length === 0,
+    available: !hasBookingConflict && !hasBlockConflict,
     conflicting_bookings: conflicting ?? [],
+    conflicting_blocks: (conflictingBlocks ?? []).map((b) => ({
+      id: b.id,
+      start_date: b.start_date,
+      end_date: b.end_date,
+      summary: b.summary,
+      source: (b.ical_connections as unknown as { name: string } | null)?.name ?? 'External',
+    })),
   })
 }
